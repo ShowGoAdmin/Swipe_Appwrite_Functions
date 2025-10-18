@@ -1,6 +1,6 @@
 import { Client, Databases, Query } from 'node-appwrite';
 
-export default async ({ req, res, log, error }) => {
+export default async ({ req, log, error }) => {
   try {
     // Initialize Appwrite client
     const client = new Client()
@@ -10,19 +10,27 @@ export default async ({ req, res, log, error }) => {
 
     const databases = new Databases(client);
 
-    // Parse request body
-    const { eventId, currentUserId } = JSON.parse(req.body);
+    // Parse payload
+    const { eventId, currentUserId } = JSON.parse(req.payload || '{}');
 
     if (!eventId || !currentUserId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing required parameters: eventId, currentUserId' 
-      });
+      return {
+        success: false,
+        message: 'Missing required parameters: eventId, currentUserId'
+      };
     }
 
-    // Get all tickets for this event
+    const databaseId = process.env.DATABASE_ID;
+    if (!databaseId) {
+      return {
+        success: false,
+        message: 'Missing DATABASE_ID environment variable'
+      };
+    }
+
+    // Get all active tickets for this event
     const tickets = await databases.listDocuments(
-      process.env.DATABASE_ID,
+      databaseId,
       'tickets',
       [
         Query.equal('eventId', eventId),
@@ -30,33 +38,25 @@ export default async ({ req, res, log, error }) => {
       ]
     );
 
-    // Get unique user IDs from tickets
     const userIds = [...new Set(tickets.documents.map(ticket => ticket.userId))];
-    
-    // Remove current user from the list
     const otherUserIds = userIds.filter(id => id !== currentUserId);
 
     if (otherUserIds.length === 0) {
-      return res.json({
+      return {
         success: true,
         attendees: [],
         message: 'No other attendees found'
-      });
+      };
     }
 
-    // Get user details for attendees
     const attendees = [];
     for (const userId of otherUserIds) {
       try {
-        const user = await databases.getDocument(
-          process.env.DATABASE_ID,
-          'users',
-          userId
-        );
+        const user = await databases.getDocument(databaseId, 'users', userId);
 
         // Check if user has already been liked by current user
         const existingLike = await databases.listDocuments(
-          process.env.DATABASE_ID,
+          databaseId,
           'attendeeLikes',
           [
             Query.equal('likerUserId', currentUserId),
@@ -81,23 +81,22 @@ export default async ({ req, res, log, error }) => {
         }
       } catch (userError) {
         log(`Error fetching user ${userId}: ${userError.message}`);
-        // Continue with other users
       }
     }
 
     log(`Found ${attendees.length} attendees for event ${eventId}`);
 
-    return res.json({
+    return {
       success: true,
       attendees,
       message: `Found ${attendees.length} attendees`
-    });
+    };
 
   } catch (err) {
     error(`Error getting event attendees: ${err.message}`);
-    return res.status(500).json({
+    return {
       success: false,
       message: 'Internal server error'
-    });
+    };
   }
 };
