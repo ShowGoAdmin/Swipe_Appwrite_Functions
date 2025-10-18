@@ -1,1 +1,0 @@
-# Swipe_Appwrite_Functions
