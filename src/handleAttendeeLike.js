@@ -120,7 +120,7 @@ export default async ({ req, res, log, error }) => {
           groupDescription: `${liker.name} wants to connect with you for ${event.name}`,
           eventId: eventId,
           eventname: event.name,
-          members: `${likerUserId},${likedUserId}`, // Both users are members
+          members: [likerUserId, likedUserId], // Both users are members (as array)
           adminUserId: likerUserId,
           eventDate: event.date || '',
           eventLocation: event.location || '',
