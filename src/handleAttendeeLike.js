@@ -91,29 +91,54 @@ export default async ({ req, res, log, error }) => {
         })
       );
 
+      const matchData = JSON.parse(matchResult.responseBody || '{}');
+
       return res.json({
         success: true,
         isMatch: true,
-        matchId: matchResult.response,
+        matchId: matchData.matchId || '',
+        chatId: matchData.chatId || '',
         message: 'It\'s a match!'
       });
     } else {
-      // Send notification to the liked user
-      log('Sending like notification');
+      // Create a like notification group (chat-like interface)
+      log('Creating like notification group');
       
-      // Call notification function
-      await functions.createExecution(
-        'sendLikeNotification',
-        JSON.stringify({
-          likerUserId,
-          likedUserId,
-          eventId
-        })
+      // Get event and user details
+      const [event, liker] = await Promise.all([
+        databases.getDocument(process.env.DATABASE_ID, 'events', eventId),
+        databases.getDocument(process.env.DATABASE_ID, 'users', likerUserId)
+      ]);
+
+      // Create a direct chat group with pending like
+      const notificationGroup = await databases.createDocument(
+        process.env.DATABASE_ID,
+        'groups',
+        'unique()',
+        {
+          groupName: `Like from ${liker.name}`,
+          groupDescription: `${liker.name} wants to connect with you for ${event.name}`,
+          eventId: eventId,
+          eventname: event.name,
+          members: `${likerUserId},${likedUserId}`, // Both users are members
+          adminUserId: likerUserId,
+          eventDate: event.date || '',
+          eventLocation: event.location || '',
+          groupImageId: liker.profilePicUrl || '',
+          eventLocation_Lat_Lng_VenueName: event.eventLocation_Lat_Lng_VenueName || '',
+          isDirectChat: true,  // Mark as direct chat
+          matchId: likeRecord.$id,  // Store the like record ID as matchId
+          likerUserId: likerUserId,  // Who sent the like
+          isAccepted: false  // Pending acceptance
+        }
       );
+
+      log(`Like notification group created: ${notificationGroup.$id}`);
 
       return res.json({
         success: true,
         isMatch: false,
+        groupId: notificationGroup.$id,
         message: 'Like sent successfully'
       });
     }
