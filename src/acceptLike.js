@@ -29,7 +29,7 @@ export default async ({ req, res, log, error }) => {
         Query.equal('likerUserId', accepterUserId),
         Query.equal('likedUserId', likerUserId),
         Query.equal('eventId', eventId)
-      ]
+      ] 
     );
 
     if (mutualLike.total === 0) {

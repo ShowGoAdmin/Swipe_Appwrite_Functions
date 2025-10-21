@@ -14,9 +14,25 @@ export default async ({ req, res, log, error }) => {
     const { likerUserId, likedUserId, eventId } = JSON.parse(req.body);
 
     if (!likerUserId || !likedUserId || !eventId) {
-      return res.status(400).json({ 
+      return res.json({ 
         success: false, 
         message: 'Missing required parameters: likerUserId, likedUserId, eventId' 
+      });
+    }
+
+    if (!process.env.DATABASE_ID) {
+      log('DATABASE_ID environment variable is not set');
+      return res.json({
+        success: false,
+        message: 'Database ID not configured'
+      });
+    }
+
+    if (!process.env.MESSAGES_COLLECTION_ID) {
+      log('MESSAGES_COLLECTION_ID environment variable is not set');
+      return res.json({
+        success: false,
+        message: 'Messages collection ID not configured'
       });
     }
 
@@ -26,24 +42,28 @@ export default async ({ req, res, log, error }) => {
       databases.getDocument(process.env.DATABASE_ID, 'events', eventId)
     ]);
 
-    // Create notification message
+    // Get the current timestamp in milliseconds and format it
+    const currentTimestampMillis = Date.now();
+    const formattedTimestamp = new Date(currentTimestampMillis).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    // Create notification message (matching Appwrite schema)
     const notificationMessage = {
-      groupId: likedUserId, // Use liked user's ID as group ID for personal notifications
+      groupsId: likedUserId, // Use liked user's ID as group ID for personal notifications
       senderId: 'system',
       senderName: 'ShowGo',
-      messageText: `👋 ${liker.name} liked you! You both are attending ${event.name}. Would you like to get along?`,
-      timestamp: new Date().toISOString(),
-      isSystemMessage: true,
-      isLikeNotification: true,
-      likerUserId,
-      eventId,
-      eventName: event.name
+      textMessage: `👋 ${liker.name} liked you! You both are attending ${event.name}. Would you like to get along?`,
+      timestamp: formattedTimestamp,
+      profilePicUrl: liker.profilePicUrl || ''
     };
 
     // Store notification in messages collection
     await databases.createDocument(
       process.env.DATABASE_ID,
-      'chatMessages',
+      process.env.MESSAGES_COLLECTION_ID,
       'unique()',
       notificationMessage
     );
@@ -52,14 +72,17 @@ export default async ({ req, res, log, error }) => {
 
     return res.json({
       success: true,
-      message: 'Like notification sent successfully'
+      message: 'Like notification sent successfully',
+      likerName: liker.name,
+      eventName: event.name
     });
 
   } catch (err) {
     error(`Error sending like notification: ${err.message}`);
-    return res.status(500).json({
+    return res.json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: err.message
     });
   }
 };
