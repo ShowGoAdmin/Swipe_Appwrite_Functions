@@ -14,19 +14,29 @@ export default async ({ req, res, log, error }) => {
     const { eventId, currentUserId } = JSON.parse(req.body);
 
     if (!eventId || !currentUserId) {
-      return res.status(400).json({ 
+      return res.json({ 
         success: false, 
         message: 'Missing required parameters: eventId, currentUserId' 
       });
     }
+
+    // Check if DATABASE_ID is set
+    if (!process.env.DATABASE_ID) {
+      log('DATABASE_ID environment variable is not set');
+      return res.json({
+        success: false,
+        message: 'Database ID not configured'
+      });
+    }
+
+    log(`Using DATABASE_ID: ${process.env.DATABASE_ID}`);
 
     // Get all tickets for this event
     const tickets = await databases.listDocuments(
       process.env.DATABASE_ID,
       'tickets',
       [
-        Query.equal('eventId', eventId),
-        Query.equal('isActive', true)
+        Query.equal('eventId', eventId)
       ]
     );
 
@@ -55,15 +65,21 @@ export default async ({ req, res, log, error }) => {
         );
 
         // Check if user has already been liked by current user
-        const existingLike = await databases.listDocuments(
-          process.env.DATABASE_ID,
-          'attendeeLikes',
-          [
-            Query.equal('likerUserId', currentUserId),
-            Query.equal('likedUserId', userId),
-            Query.equal('eventId', eventId)
-          ]
-        );
+        let existingLike = { total: 0 };
+        try {
+          existingLike = await databases.listDocuments(
+            process.env.DATABASE_ID,
+            'attendeeLikes',
+            [
+              Query.equal('likerUserId', currentUserId),
+              Query.equal('likedUserId', userId),
+              Query.equal('eventId', eventId)
+            ]
+          );
+        } catch (likeError) {
+          log(`Error checking existing likes: ${likeError.message}`);
+          // Continue without checking likes if collection doesn't exist
+        }
 
         if (existingLike.total === 0) {
           attendees.push({
@@ -95,7 +111,7 @@ export default async ({ req, res, log, error }) => {
 
   } catch (err) {
     error(`Error getting event attendees: ${err.message}`);
-    return res.status(500).json({
+    return res.json({
       success: false,
       message: 'Internal server error'
     });

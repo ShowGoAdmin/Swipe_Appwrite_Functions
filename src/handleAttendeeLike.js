@@ -1,4 +1,4 @@
-import { Client, Databases, Functions } from 'node-appwrite';
+import { Client, Databases, Functions, Query } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
   try {
@@ -15,20 +15,31 @@ export default async ({ req, res, log, error }) => {
     const { likerUserId, likedUserId, eventId } = JSON.parse(req.body);
 
     if (!likerUserId || !likedUserId || !eventId) {
-      return res.status(400).json({ 
+      return res.json({ 
         success: false, 
         message: 'Missing required parameters: likerUserId, likedUserId, eventId' 
       });
     }
+
+    // Check if DATABASE_ID is set
+    if (!process.env.DATABASE_ID) {
+      log('DATABASE_ID environment variable is not set');
+      return res.json({
+        success: false,
+        message: 'Database ID not configured'
+      });
+    }
+
+    log(`Using DATABASE_ID: ${process.env.DATABASE_ID}`);
 
     // Check if like already exists
     const existingLikes = await databases.listDocuments(
       process.env.DATABASE_ID,
       'attendeeLikes',
       [
-        `likerUserId=${likerUserId}`,
-        `likedUserId=${likedUserId}`,
-        `eventId=${eventId}`
+        Query.equal('likerUserId', likerUserId),
+        Query.equal('likedUserId', likedUserId),
+        Query.equal('eventId', eventId)
       ]
     );
 
@@ -60,9 +71,9 @@ export default async ({ req, res, log, error }) => {
       process.env.DATABASE_ID,
       'attendeeLikes',
       [
-        `likerUserId=${likedUserId}`,
-        `likedUserId=${likerUserId}`,
-        `eventId=${eventId}`
+        Query.equal('likerUserId', likedUserId),
+        Query.equal('likedUserId', likerUserId),
+        Query.equal('eventId', eventId)
       ]
     );
 
@@ -109,7 +120,7 @@ export default async ({ req, res, log, error }) => {
 
   } catch (err) {
     error(`Error handling attendee like: ${err.message}`);
-    return res.status(500).json({
+    return res.json({
       success: false,
       message: 'Internal server error'
     });

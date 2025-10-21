@@ -1,4 +1,4 @@
-import { Client, Databases, Functions } from 'node-appwrite';
+import { Client, Databases, Functions, Query } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
   try {
@@ -15,7 +15,7 @@ export default async ({ req, res, log, error }) => {
     const { accepterUserId, likerUserId, eventId } = JSON.parse(req.body);
 
     if (!accepterUserId || !likerUserId || !eventId) {
-      return res.status(400).json({ 
+      return res.json({ 
         success: false, 
         message: 'Missing required parameters: accepterUserId, likerUserId, eventId' 
       });
@@ -26,9 +26,9 @@ export default async ({ req, res, log, error }) => {
       process.env.DATABASE_ID,
       'attendeeLikes',
       [
-        `likerUserId=${accepterUserId}`,
-        `likedUserId=${likerUserId}`,
-        `eventId=${eventId}`
+        Query.equal('likerUserId', accepterUserId),
+        Query.equal('likedUserId', likerUserId),
+        Query.equal('eventId', eventId)
       ]
     );
 
@@ -69,7 +69,7 @@ export default async ({ req, res, log, error }) => {
 
   } catch (err) {
     error(`Error accepting like: ${err.message}`);
-    return res.status(500).json({
+    return res.json({
       success: false,
       message: 'Internal server error'
     });
