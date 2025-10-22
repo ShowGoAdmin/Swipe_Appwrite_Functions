@@ -35,6 +35,7 @@ export default async ({ req, res, log, error }) => {
       groupId
     );
 
+    log('1. verifying group document');
     // Verify this is a direct chat with pending like
     if (!group.isDirectChat || group.isAccepted) {
       return res.json({
@@ -42,8 +43,9 @@ export default async ({ req, res, log, error }) => {
         message: 'This is not a pending like notification'
       });
     }
-
+    log('2. verified group document');
     // Update the group to convert it to an accepted direct chat
+    log('3. updating group document');
     await databases.updateDocument(
       process.env.DATABASE_ID,
       'groups',
@@ -56,7 +58,8 @@ export default async ({ req, res, log, error }) => {
       }
     );
 
-    log(`Like accepted for group ${groupId}`);
+    log('4. updated group document');
+    log(`5. Like accepted for group ${groupId}`);
 
     return res.json({
       success: true,
@@ -65,6 +68,7 @@ export default async ({ req, res, log, error }) => {
       message: 'Match accepted! You can now chat.'
     });
 
+    log('6. returned response');
   } catch (err) {
     error(`Error accepting like notification: ${err.message}`);
     return res.json({
