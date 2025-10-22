@@ -89,11 +89,9 @@ export default async ({ req, res, log, error }) => {
     // ============================================
     log('Creating Appwrite transaction');
     
-    // Create transaction with 60 second TTL (time-to-live)
-    const transaction = await databases.createTransaction(
-      DATABASE_ID,
-      60  // TTL in seconds
-    );
+    // Create transaction with 5-minute TTL (300 seconds)
+    // TTL must be between 60 and 3,600 seconds
+    const transaction = await databases.createTransaction(300);
     appwriteTransactionId = transaction.$id;
     
     log('Transaction created successfully', { transactionId: appwriteTransactionId });
