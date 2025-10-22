@@ -305,7 +305,7 @@ export default async ({ req, res, log, error }) => {
     
     await databases.updateTransaction(
       appwriteTransactionId,
-      'commit' // Commit all staged operations atomically
+      true // true = commit, false = rollback
     );
     
     log('Transaction committed successfully - all operations persisted');
@@ -339,7 +339,7 @@ export default async ({ req, res, log, error }) => {
         
         await databases.updateTransaction(
           appwriteTransactionId,
-          'rollback' // Rollback all staged operations automatically
+          false // true = commit, false = rollback
         );
         
         log('Transaction rolled back successfully - no data persisted');
