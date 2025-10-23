@@ -258,8 +258,8 @@ export default async ({ req, res, log, error }) => {
       
       // CLEANUP: Delete uploaded files
       await cleanupUploadedFiles(uploadedProfilePicId, uploadedQRCodeId);
-      
-      return res.json({
+
+  return res.json({
         success: false,
         error: 'This email is already registered',
         code: 'DUPLICATE_EMAIL',

@@ -1,4 +1,5 @@
-import { Client, Databases, Storage, ID, Query, InputFile } from 'node-appwrite';
+import { Client, Databases, Storage, ID, Query } from 'node-appwrite';
+import { InputFile } from 'node-appwrite/file';
 
 /**
  * FULLY Atomic User Signup Function with Complete Rollback
