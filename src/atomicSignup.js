@@ -1,4 +1,4 @@
-import { Client, Databases, Storage, ID, Query } from 'node-appwrite';
+import { Client, Databases, Storage, ID, Query, InputFile } from 'node-appwrite';
 
 /**
  * FULLY Atomic User Signup Function with Complete Rollback
@@ -124,12 +124,17 @@ export default async ({ req, res, log, error }) => {
       const profilePicBuffer = Buffer.from(profilePicBase64, 'base64');
       const profilePicFileId = `${userId}_user_pic.png`;
       
-      // Create file from buffer (InputFile.fromBuffer in Node.js Appwrite SDK)
+      // Create InputFile from buffer
+      const profilePicInputFile = InputFile.fromBuffer(
+        profilePicBuffer,
+        profilePicFileId
+      );
+      
+      // Upload file to storage
       const profilePicFile = await storage.createFile(
         PROFILE_PIC_BUCKET_ID,
         profilePicFileId,
-        profilePicBuffer
-        // Permissions are set at bucket level
+        profilePicInputFile
       );
       
       uploadedProfilePicId = profilePicFile.$id;
@@ -154,12 +159,17 @@ export default async ({ req, res, log, error }) => {
       const qrCodeBuffer = Buffer.from(qrCodeBase64, 'base64');
       const qrCodeFileId = `${userId}_user_qr.png`;
       
-      // Create file from buffer (InputFile.fromBuffer in Node.js Appwrite SDK)
+      // Create InputFile from buffer
+      const qrCodeInputFile = InputFile.fromBuffer(
+        qrCodeBuffer,
+        qrCodeFileId
+      );
+      
+      // Upload file to storage
       const qrCodeFile = await storage.createFile(
         QR_CODE_BUCKET_ID,
         qrCodeFileId,
-        qrCodeBuffer
-        // Permissions are set at bucket level
+        qrCodeInputFile
       );
       
       uploadedQRCodeId = qrCodeFile.$id;
