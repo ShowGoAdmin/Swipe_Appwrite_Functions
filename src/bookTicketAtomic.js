@@ -56,7 +56,8 @@ export default async ({ req, res, log, error }) => {
       taxGST,
       internetHandlingFee,
       ticketTypeName,
-      qrCodeFileId
+      qrCodeFileId,
+      ticketId: providedTicketId // Optional pre-generated ticket ID from client
     } = JSON.parse(req.body || '{}');
 
     log('Starting atomic ticket booking with Appwrite Transactions', { userId, eventId, quantity, ticketTypeName });
@@ -97,7 +98,36 @@ export default async ({ req, res, log, error }) => {
     log('Transaction created successfully', { transactionId: appwriteTransactionId });
 
     // ============================================
-    // STEP 2: Check ticket availability within transaction
+    // STEP 2: Check for duplicate payment WITHIN transaction
+    // ============================================
+    log('Checking for duplicate payment within transaction context');
+    
+    const existingTransaction = await databases.listDocuments(
+      DATABASE_ID,
+      'transactions',
+      [Query.equal('paymentId', paymentId)],
+      undefined, // permissions
+      appwriteTransactionId // CRITICAL: Check within transaction for conflict detection
+    );
+
+    if (existingTransaction.documents.length > 0) {
+      error('Payment already processed');
+      
+      // Rollback transaction
+      await databases.updateTransaction(appwriteTransactionId, false);
+      
+      return res.json({
+        success: false,
+        error: 'This payment has already been processed',
+        code: 'DUPLICATE_PAYMENT',
+        existingTicketId: existingTransaction.documents[0].ticketId
+      }, 400);
+    }
+    
+    log('No duplicate payment found, proceeding');
+
+    // ============================================
+    // STEP 3: Check ticket availability within transaction
     // ============================================
     log('Checking ticket availability within transaction context');
     
@@ -148,34 +178,55 @@ export default async ({ req, res, log, error }) => {
     }
 
     // ============================================
-    // STEP 3: Check for duplicate payment
+    // STEP 4: CREATE TRANSACTION & CHECK DUPLICATES ATOMICALLY
     // ============================================
-    log('Checking for duplicate payment');
-    
-    const existingTransaction = await databases.listDocuments(
-      DATABASE_ID,
-      'transactions',
-      [Query.equal('paymentId', paymentId)]
-    );
-
-    if (existingTransaction.documents.length > 0) {
-      error('Payment already processed');
-      return res.json({
-        success: false,
-        error: 'This payment has already been processed',
-        code: 'DUPLICATE_PAYMENT',
-        existingTicketId: existingTransaction.documents[0].ticketId
-      }, 400);
-    }
+    // Note: Duplicate payment check moved inside transaction (lines 100-126)
+    // This ensures atomic duplicate detection with conflict resolution
 
     // ============================================
-    // STEP 4: Stage ticket document creation
+    // STEP 5: Stage ticket document creation
     // ============================================
     log('Staging ticket document creation');
     
-    // Generate unique ticket ID (will be used for QR code generation later)
-    ticketId = ID.unique();
-    log('Generated ticket ID', { ticketId });
+    // Use provided ticket ID or generate a new one
+    // Pre-generated ID allows client to create QR code before booking
+    if (providedTicketId) {
+      ticketId = providedTicketId;
+      log('Using pre-generated ticket ID from client', { ticketId });
+      
+      // Verify this ticket ID doesn't already exist (prevents duplicate bookings)
+      try {
+        const existingTicket = await databases.getDocument(
+          DATABASE_ID,
+          'tickets',
+          ticketId,
+          [],
+          appwriteTransactionId
+        );
+        
+        // If we reach here, ticket already exists - this is a duplicate
+        error('Ticket ID already exists - duplicate booking attempt');
+        await databases.updateTransaction(appwriteTransactionId, false);
+        
+        return res.json({
+          success: false,
+          error: 'This ticket ID has already been used',
+          code: 'DUPLICATE_TICKET_ID',
+          existingTicketId: ticketId
+        }, 400);
+      } catch (err) {
+        // Document not found - this is expected and good (ticket doesn't exist yet)
+        if (err.code === 404 || err.message?.includes('not found')) {
+          log('Ticket ID verified as unique', { ticketId });
+        } else {
+          // Unexpected error
+          throw err;
+        }
+      }
+    } else {
+      ticketId = ID.unique();
+      log('Generated new ticket ID', { ticketId });
+    }
     
     const ticketDoc = await databases.createDocument(
       DATABASE_ID,
@@ -204,7 +255,7 @@ export default async ({ req, res, log, error }) => {
     log('Ticket creation staged', { ticketId });
 
     // ============================================
-    // STEP 5: Stage transaction document creation
+    // STEP 6: Stage transaction document creation
     // ============================================
     log('Staging transaction document creation');
     
@@ -228,7 +279,7 @@ export default async ({ req, res, log, error }) => {
     log('Transaction creation staged', { transactionId: transactionDocId });
 
     // ============================================
-    // STEP 6: Stage order document creation
+    // STEP 7: Stage order document creation
     // ============================================
     log('Staging order document creation');
     
@@ -256,11 +307,11 @@ export default async ({ req, res, log, error }) => {
 
     log('Order creation staged', { orderId });
 
-    // Note: QR code will be generated and updated by the client after booking completes
-    // The QR code contains the ticket ID, so it can only be generated after we know the ID
+    // Note: If client pre-generates ticket ID, QR code will be included in initial booking
+    // Otherwise, QR code can be generated and updated by client after booking completes
 
     // ============================================
-    // STEP 7: Stage ticket decrease operation (CRITICAL)
+    // STEP 8: Stage ticket decrease operation (CRITICAL)
     // ============================================
     log('Staging ticket decrease');
     
@@ -322,7 +373,7 @@ export default async ({ req, res, log, error }) => {
         transactionId: transactionDocId,
         orderId: orderId,
         message: 'Ticket booking completed successfully with Appwrite Transactions',
-        note: 'QR code will be generated by client using the ticketId'
+        qrCodeIncluded: qrCodeFileId ? true : false
       }
     }, 200);
 
