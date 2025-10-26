@@ -336,48 +336,85 @@ export default async ({ req, res, log, error }) => {
     );
 
     // ============================================
-    // STEP 11: Clean up if all tickets sold
+    // STEP 11: Clean up if all tickets sold (within transaction)
     // ============================================
     if (newInstantSaleQuantity === 0) {
       log('All tickets sold, cleaning up listings');
       
-      // Delete from instant sale table
-      await databases.deleteDocument(
-        DATABASE_ID,
-        'TicketsForInstantSale',
-        instantSaleTicketId,
-        [],
-        appwriteTransactionId
-      );
-
-      // Delete from general listings
-      if (listingQuery.documents.length > 0) {
+      try {
+        // Delete from instant sale table
+        log('Attempting to delete instant sale listing', { instantSaleTicketId });
         await databases.deleteDocument(
           DATABASE_ID,
-          'Listings',
-          listingQuery.documents[0].$id,
+          'TicketsForInstantSale',
+          instantSaleTicketId,
           [],
           appwriteTransactionId
         );
+        log('Instant sale listing deleted successfully');
+      } catch (deleteErr) {
+        error('Failed to delete instant sale listing', {
+          error: deleteErr.message,
+          code: deleteErr.code,
+          instantSaleTicketId,
+          transactionId: appwriteTransactionId
+        });
+        throw deleteErr; // Re-throw to trigger transaction rollback
+      }
+
+      // Delete from general listings if it exists
+      if (listingQuery.documents.length > 0) {
+        try {
+          const listingId = listingQuery.documents[0].$id;
+          log('Attempting to delete general listing', { listingId });
+          await databases.deleteDocument(
+            DATABASE_ID,
+            'Listings',
+            listingId,
+            [],
+            appwriteTransactionId
+          );
+          log('General listing deleted successfully');
+        } catch (deleteErr) {
+          error('Failed to delete general listing', {
+            error: deleteErr.message,
+            code: deleteErr.code,
+            listingId: listingQuery.documents[0].$id,
+            transactionId: appwriteTransactionId
+          });
+          throw deleteErr; // Re-throw to trigger transaction rollback
+        }
+      } else {
+        log('No general listing found to delete');
       }
     }
 
     // ============================================
-    // STEP 11.5: Handle original ticket cleanup
+    // STEP 11.5: Handle original ticket cleanup (within transaction)
     // ============================================
     if (newOriginalQuantity === 0) {
       log('Original ticket completely sold, cleaning up');
       
-      // Delete the original ticket since quantity is now 0
-      await databases.deleteDocument(
-        DATABASE_ID,
-        'tickets',
-        originalTicketId,
-        [],
-        appwriteTransactionId
-      );
-      
-      log('Original ticket deleted successfully', { originalTicketId });
+      try {
+        // Delete the original ticket since quantity is now 0
+        log('Attempting to delete original ticket', { originalTicketId });
+        await databases.deleteDocument(
+          DATABASE_ID,
+          'tickets',
+          originalTicketId,
+          [],
+          appwriteTransactionId
+        );
+        log('Original ticket deleted successfully', { originalTicketId });
+      } catch (deleteErr) {
+        error('Failed to delete original ticket', {
+          error: deleteErr.message,
+          code: deleteErr.code,
+          originalTicketId,
+          transactionId: appwriteTransactionId
+        });
+        throw deleteErr; // Re-throw to trigger transaction rollback
+      }
     }
 
     // ============================================
@@ -453,29 +490,12 @@ export default async ({ req, res, log, error }) => {
     // ============================================
     // ERROR HANDLING & AUTOMATIC ROLLBACK
     // ============================================
-    error('Resale purchase failed, rolling back transaction', err);
+    error('Resale purchase failed', err);
     
-    // Attempt to rollback the transaction if it was created
+    // Appwrite automatically rolls back transactions on error
+    // No manual rollback needed
     if (appwriteTransactionId) {
-      try {
-        log('Rolling back transaction', { transactionId: appwriteTransactionId });
-        
-        await databases.updateTransaction(
-          appwriteTransactionId,
-          false // true = commit, false = rollback
-        );
-        
-        log('Transaction rolled back successfully - no data persisted');
-      } catch (rollbackErr) {
-        error('Transaction rollback failed', {
-          rollbackError: rollbackErr.message,
-          originalError: err.message,
-          transactionId: appwriteTransactionId
-        });
-        // Even if rollback fails, Appwrite will auto-rollback uncommitted transactions
-      }
-    } else {
-      log('No transaction to rollback - error occurred before transaction creation');
+      log('Transaction will be automatically rolled back by Appwrite', { transactionId: appwriteTransactionId });
     }
 
     // Determine error code and message

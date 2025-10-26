@@ -182,29 +182,12 @@ export default async ({ req, res, log, error }) => {
     // ============================================
     // ERROR HANDLING & AUTOMATIC ROLLBACK
     // ============================================
-    error('Ticket listing failed, rolling back transaction', err);
+    error('Ticket listing failed', err);
     
-    // Attempt to rollback the transaction if it was created
+    // Appwrite automatically rolls back transactions on error
+    // No manual rollback needed
     if (transactionId) {
-      try {
-        log('Rolling back transaction', { transactionId });
-        
-        await databases.updateTransaction(
-          transactionId,
-          false // true = commit, false = rollback
-        );
-        
-        log('Transaction rolled back successfully - no data persisted');
-      } catch (rollbackErr) {
-        error('Transaction rollback failed', {
-          rollbackError: rollbackErr.message,
-          originalError: err.message,
-          transactionId: transactionId
-        });
-        // Even if rollback fails, Appwrite will auto-rollback uncommitted transactions
-      }
-    } else {
-      log('No transaction to rollback - error occurred before transaction creation');
+      log('Transaction will be automatically rolled back by Appwrite', { transactionId });
     }
     
     // Determine error code and message
