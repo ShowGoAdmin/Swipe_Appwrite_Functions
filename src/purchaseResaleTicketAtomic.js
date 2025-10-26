@@ -20,8 +20,7 @@ async function sendPushNotification(sellerUserId, message, databases) {
       title: message.title,        // Notification title
       body: message.body,          // Notification body
       users: users,                // Target users (array of user IDs)
-      data: message.data,          // Optional custom payload
-      
+      data: message.data          // Optional custom payloa
     });
     
     
