@@ -1,12 +1,5 @@
 import { Client, Databases, ID, Query } from 'node-appwrite';
 
-const client = new Client()
-  .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
-  .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
-  .setKey(process.env.APPWRITE_API_KEY);
-
-const databases = new Databases(client);
-
 /**
  * Atomic function to list a ticket for sale
  * This function ensures all related operations are atomic:
@@ -16,6 +9,14 @@ const databases = new Databases(client);
  * 4. Fetch seller name from users collection
  */
 export default async ({ req, res, log }) => {
+  const client = new Client()
+    .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
+    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
+    .setKey(req.headers['x-appwrite-key'] || process.env.APPWRITE_API_KEY);
+
+  const databases = new Databases(client);
+  const DATABASE_ID = process.env.DATABASE_ID || process.env.APPWRITE_FUNCTION_DATABASE_ID;
+  
   try {
     log('Starting atomic ticket listing process');
 
@@ -51,16 +52,22 @@ export default async ({ req, res, log }) => {
 
     log('Starting atomic transaction for ticket listing', { ticketId, sellerUserId });
 
-    // Start atomic transaction
-    const transaction = await databases.beginTransaction();
+    // Create Appwrite Transaction with 5-minute TTL (300 seconds)
+    log('Creating Appwrite transaction');
+    const transaction = await databases.createTransaction(300);
+    const transactionId = transaction.$id;
+    
+    log('Transaction created successfully', { transactionId });
 
     try {
       // STEP 1: Fetch seller name from users collection
       log('Fetching seller details');
       const sellerUser = await databases.getDocument(
-        process.env.APPWRITE_FUNCTION_DATABASE_ID,
+        DATABASE_ID,
         'users',
-        sellerUserId
+        sellerUserId,
+        [],
+        transactionId
       );
       const sellerName = sellerUser.name || 'Unknown Seller';
 
@@ -68,7 +75,7 @@ export default async ({ req, res, log }) => {
       log('Creating instant sale ticket entry');
       const instantSaleTicketId = ID.unique();
       const instantSaleTicket = await databases.createDocument(
-        process.env.APPWRITE_FUNCTION_DATABASE_ID,
+        DATABASE_ID,
         'TicketsForInstantSale',
         instantSaleTicketId,
         {
@@ -87,7 +94,9 @@ export default async ({ req, res, log }) => {
           eventTime: eventTime,
           quantity: listingQuantity,
           access: access
-        }
+        },
+        [],
+        transactionId
       );
 
       log('Instant sale ticket created', { instantSaleTicketId: instantSaleTicket.$id });
@@ -96,7 +105,7 @@ export default async ({ req, res, log }) => {
       log('Creating listing entry');
       const listingId = ID.unique();
       const listing = await databases.createDocument(
-        process.env.APPWRITE_FUNCTION_DATABASE_ID,
+        DATABASE_ID,
         'Listings',
         listingId,
         {
@@ -107,7 +116,9 @@ export default async ({ req, res, log }) => {
           listingExpiry: listingExpiry,
           NoteToBuyers: customNote,
           quantity: listingQuantity
-        }
+        },
+        [],
+        transactionId
       );
 
       log('Listing created', { listingId: listing.$id });
@@ -116,14 +127,16 @@ export default async ({ req, res, log }) => {
       log('Updating original ticket status');
       const newQuantity = (parseInt(quantity) - parseInt(listingQuantity)).toString();
       const updatedTicket = await databases.updateDocument(
-        process.env.APPWRITE_FUNCTION_DATABASE_ID,
+        DATABASE_ID,
         'tickets',
         ticketId,
         {
           isListedForSale: 'true',
           quantity: newQuantity,
           quantityListedForSale: listingQuantity
-        }
+        },
+        [],
+        transactionId
       );
 
       log('Original ticket updated', { 
@@ -133,7 +146,7 @@ export default async ({ req, res, log }) => {
       });
 
       // Commit the transaction
-      await databases.commitTransaction(transaction);
+      await databases.commitTransaction(transactionId);
       log('Transaction committed successfully');
 
       // Return success response
@@ -152,7 +165,7 @@ export default async ({ req, res, log }) => {
 
     } catch (transactionError) {
       // Rollback the transaction
-      await databases.rollbackTransaction(transaction);
+      await databases.rollbackTransaction(transactionId);
       log('Transaction rolled back due to error', { error: transactionError.message });
       throw transactionError;
     }
@@ -166,3 +179,5 @@ export default async ({ req, res, log }) => {
     });
   }
 };
+
+
