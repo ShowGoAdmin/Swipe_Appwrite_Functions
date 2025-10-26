@@ -121,10 +121,12 @@ export default async ({ req, res, log, error }) => {
     // ============================================
     log('Creating Appwrite transaction for resale purchase');
     
+    // Create transaction with 5-minute TTL (300 seconds)
+    // TTL must be between 60 and 3,600 seconds
     const transaction = await databases.createTransaction(300);
     appwriteTransactionId = transaction.$id;
     
-    log('Transaction created successfully', { transactionId: appwriteTransactionId, fullTransaction: JSON.stringify(transaction) });
+    log('Transaction created successfully', { transactionId: appwriteTransactionId });
 
     // ============================================
     // STEP 3: Check for duplicate payment
@@ -470,7 +472,10 @@ export default async ({ req, res, log, error }) => {
           originalError: err.message,
           transactionId: appwriteTransactionId
         });
+        // Even if rollback fails, Appwrite will auto-rollback uncommitted transactions
       }
+    } else {
+      log('No transaction to rollback - error occurred before transaction creation');
     }
 
     // Determine error code and message

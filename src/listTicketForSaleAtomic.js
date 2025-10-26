@@ -56,10 +56,12 @@ export default async ({ req, res, log, error }) => {
 
     // Create Appwrite Transaction with 5-minute TTL (300 seconds)
     log('Creating Appwrite transaction');
+    // Create transaction with 5-minute TTL (300 seconds)
+    // TTL must be between 60 and 3,600 seconds
     const transaction = await databases.createTransaction(300);
     transactionId = transaction.$id;
     
-    log('Transaction created successfully', { transactionId, fullTransaction: JSON.stringify(transaction) });
+    log('Transaction created successfully', { transactionId });
 
     try {
       // STEP 1: Fetch seller name from users collection
@@ -177,26 +179,58 @@ export default async ({ req, res, log, error }) => {
     }
 
   } catch (err) {
+    // ============================================
     // ERROR HANDLING & AUTOMATIC ROLLBACK
+    // ============================================
     error('Ticket listing failed, rolling back transaction', err);
     
     // Attempt to rollback the transaction if it was created
     if (transactionId) {
       try {
         log('Rolling back transaction', { transactionId });
-        await databases.updateTransaction(transactionId, false); // false = rollback
-        log('Transaction rolled back successfully');
+        
+        await databases.updateTransaction(
+          transactionId,
+          false // true = commit, false = rollback
+        );
+        
+        log('Transaction rolled back successfully - no data persisted');
       } catch (rollbackErr) {
-        error('Transaction rollback failed', { rollbackError: rollbackErr.message });
+        error('Transaction rollback failed', {
+          rollbackError: rollbackErr.message,
+          originalError: err.message,
+          transactionId: transactionId
+        });
+        // Even if rollback fails, Appwrite will auto-rollback uncommitted transactions
       }
+    } else {
+      log('No transaction to rollback - error occurred before transaction creation');
     }
     
-    log('Error in atomic ticket listing', { error: err.message });
+    // Determine error code and message
+    let errorCode = 'LISTING_ERROR';
+    let errorMessage = err.message || 'Ticket listing failed';
+    
+    // Check for specific Appwrite error types
+    if (err.code === 409 || err.message?.includes('conflict')) {
+      errorCode = 'CONFLICT_ERROR';
+      errorMessage = 'Listing conflict detected. Please try again.';
+    } else if (err.message?.includes('not found')) {
+      errorCode = 'NOT_FOUND_ERROR';
+      errorMessage = 'Ticket or event not found';
+    } else if (err.message?.includes('permission')) {
+      errorCode = 'PERMISSION_ERROR';
+      errorMessage = 'Permission denied';
+    }
+    
+    // Return error response
     return res.json({
       success: false,
-      error: err.message || 'Unknown error occurred',
-      code: 'LISTING_ERROR'
-    });
+      error: errorMessage,
+      code: errorCode,
+      details: err.message,
+      transactionRolledBack: transactionId !== null
+    }, 500);
   }
 };
 
