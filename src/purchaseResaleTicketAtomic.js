@@ -423,12 +423,12 @@ export default async ({ req, res, log, error }) => {
           ? `🎊 Congratulations! All your ${eventName} tickets have been sold`
           : `${quantityInt} ticket(s) of ${eventName} sold for ₹${totalAmount}`,
         data: {
-          type: newOriginalQuantity === 0 ? "complete_ticket_sale" : "individual_ticket_sold",
-          ticketId: originalTicketId,
-          eventName: eventName,
+          type: newOriginalQuantity === 0 ? "complete_ticket_sale".toString() : "individual_ticket_sold".toString(),
+          ticketId: originalTicketId.toString(),
+          eventName: eventName.toString(),
           amount: totalAmount.toString(),
           quantitySold: quantityInt.toString(),
-          buyerId: buyerId,
+          buyerId: buyerId.toString(),
           remainingQuantity: newOriginalQuantity.toString(),
           isCompletelySold: (newOriginalQuantity === 0).toString(),
           totalEarnings: totalAmount.toString()
