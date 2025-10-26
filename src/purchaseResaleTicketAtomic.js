@@ -348,8 +348,7 @@ export default async ({ req, res, log, error }) => {
           DATABASE_ID,
           'TicketsForInstantSale',
           instantSaleTicketId,
-          []
-          //appwriteTransactionId
+          appwriteTransactionId
         );
         log('Instant sale listing deleted successfully');
       } catch (deleteErr) {
@@ -371,7 +370,6 @@ export default async ({ req, res, log, error }) => {
             DATABASE_ID,
             'Listings',
             listingId,
-            [],
             appwriteTransactionId
           );
           log('General listing deleted successfully');
@@ -402,7 +400,6 @@ export default async ({ req, res, log, error }) => {
           DATABASE_ID,
           'tickets',
           originalTicketId,
-          [],
           appwriteTransactionId
         );
         log('Original ticket deleted successfully', { originalTicketId });
