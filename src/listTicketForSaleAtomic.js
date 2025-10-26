@@ -8,7 +8,7 @@ import { Client, Databases, ID, Query } from 'node-appwrite';
  * 3. Update original ticket's isListedForSale status and quantity
  * 4. Fetch seller name from users collection
  */
-export default async ({ req, res, log }) => {
+export default async ({ req, res, log, error }) => {
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
@@ -16,6 +16,8 @@ export default async ({ req, res, log }) => {
 
   const databases = new Databases(client);
   const DATABASE_ID = process.env.DATABASE_ID || process.env.APPWRITE_FUNCTION_DATABASE_ID;
+  
+  let transactionId = null;
   
   try {
     log('Starting atomic ticket listing process');
@@ -55,7 +57,7 @@ export default async ({ req, res, log }) => {
     // Create Appwrite Transaction with 5-minute TTL (300 seconds)
     log('Creating Appwrite transaction');
     const transaction = await databases.createTransaction(300);
-    const transactionId = transaction.$id;
+    transactionId = transaction.$id;
     
     log('Transaction created successfully', { transactionId });
 
@@ -146,7 +148,7 @@ export default async ({ req, res, log }) => {
       });
 
       // Commit the transaction
-      await databases.commitTransaction(transactionId);
+      await databases.updateTransaction(transactionId, true); // true = commit
       log('Transaction committed successfully');
 
       // Return success response
@@ -165,16 +167,34 @@ export default async ({ req, res, log }) => {
 
     } catch (transactionError) {
       // Rollback the transaction
-      await databases.rollbackTransaction(transactionId);
-      log('Transaction rolled back due to error', { error: transactionError.message });
+      try {
+        await databases.updateTransaction(transactionId, false); // false = rollback
+        log('Transaction rolled back due to error', { error: transactionError.message });
+      } catch (rollbackErr) {
+        log('Transaction rollback failed', { rollbackError: rollbackErr.message });
+      }
       throw transactionError;
     }
 
-  } catch (error) {
-    log('Error in atomic ticket listing', { error: error.message });
+  } catch (err) {
+    // ERROR HANDLING & AUTOMATIC ROLLBACK
+    error('Ticket listing failed, rolling back transaction', err);
+    
+    // Attempt to rollback the transaction if it was created
+    if (transactionId) {
+      try {
+        log('Rolling back transaction', { transactionId });
+        await databases.updateTransaction(transactionId, false); // false = rollback
+        log('Transaction rolled back successfully');
+      } catch (rollbackErr) {
+        error('Transaction rollback failed', { rollbackError: rollbackErr.message });
+      }
+    }
+    
+    log('Error in atomic ticket listing', { error: err.message });
     return res.json({
       success: false,
-      error: error.message || 'Unknown error occurred',
+      error: err.message || 'Unknown error occurred',
       code: 'LISTING_ERROR'
     });
   }
