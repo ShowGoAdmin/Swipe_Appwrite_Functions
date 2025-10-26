@@ -59,7 +59,7 @@ export default async ({ req, res, log, error }) => {
     const transaction = await databases.createTransaction(300);
     transactionId = transaction.$id;
     
-    log('Transaction created successfully', { transactionId });
+    log('Transaction created successfully', { transactionId, fullTransaction: JSON.stringify(transaction) });
 
     try {
       // STEP 1: Fetch seller name from users collection

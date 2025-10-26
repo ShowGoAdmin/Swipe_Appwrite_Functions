@@ -124,7 +124,7 @@ export default async ({ req, res, log, error }) => {
     const transaction = await databases.createTransaction(300);
     appwriteTransactionId = transaction.$id;
     
-    log('Transaction created successfully', { transactionId: appwriteTransactionId });
+    log('Transaction created successfully', { transactionId: appwriteTransactionId, fullTransaction: JSON.stringify(transaction) });
 
     // ============================================
     // STEP 3: Check for duplicate payment
