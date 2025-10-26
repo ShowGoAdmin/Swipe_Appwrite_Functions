@@ -398,7 +398,7 @@ export default async ({ req, res, log, error }) => {
       const notificationMessage = {
         title: newOriginalQuantity === 0 ? "🎉 All Tickets Sold!" : "💰 Ticket Sale Notification",
         body: newOriginalQuantity === 0 
-          ? `🎊 Congratulations! All your ${eventName} tickets have been sold for ₹${totalAmount}`
+          ? `🎊 Congratulations! All your ${eventName} tickets have been sold`
           : `${quantityInt} ticket(s) of ${eventName} sold for ₹${totalAmount}`,
         data: {
           type: newOriginalQuantity === 0 ? "complete_ticket_sale" : "individual_ticket_sold",
