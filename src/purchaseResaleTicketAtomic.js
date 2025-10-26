@@ -348,7 +348,7 @@ export default async ({ req, res, log, error }) => {
           DATABASE_ID,
           'TicketsForInstantSale',
           instantSaleTicketId,
-          [],
+          []
           //appwriteTransactionId
         );
         log('Instant sale listing deleted successfully');
