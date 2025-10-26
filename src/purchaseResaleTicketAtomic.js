@@ -222,9 +222,13 @@ export default async ({ req, res, log, error }) => {
       pricePerTicket: sellingPrice,
       imageFileId: originalTicketDoc.imageFileId,
       category: originalTicketDoc.category,
-      quantity: quantityPurchased,
+      quantity: quantityInt.toString(), // Convert to string as required by Appwrite
       isListedForSale: 'false',
       qrCodeFileId: `${newTicketId}_ticket_qr.png`,
+      bookedOn: new Date().toISOString(),
+      purchaseType: 'resale',
+      originalTicketId: originalTicketId,
+      sellerUserId: sellerUserId
     };
 
     await databases.createDocument(
@@ -344,7 +348,8 @@ export default async ({ req, res, log, error }) => {
           DATABASE_ID,
           'TicketsForInstantSale',
           instantSaleTicketId,
-          appwriteTransactionId
+          []
+          //appwriteTransactionId
         );
         log('Instant sale listing deleted successfully');
       } catch (deleteErr) {
@@ -366,7 +371,8 @@ export default async ({ req, res, log, error }) => {
             DATABASE_ID,
             'Listings',
             listingId,
-            appwriteTransactionId
+            [],
+            //appwriteTransactionId
           );
           log('General listing deleted successfully');
         } catch (deleteErr) {
@@ -396,6 +402,7 @@ export default async ({ req, res, log, error }) => {
           DATABASE_ID,
           'tickets',
           originalTicketId,
+          [],
           appwriteTransactionId
         );
         log('Original ticket deleted successfully', { originalTicketId });
