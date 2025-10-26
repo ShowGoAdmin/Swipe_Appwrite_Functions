@@ -15,22 +15,15 @@ async function sendPushNotification(sellerUserId, message, databases) {
     const messageId = ID.unique();
     const users = [sellerUserId]; // Target specific seller
     
-    const pushMessage = await messaging.createPush(
-      messageId,
-      message.title,
-      message.body,
-      [], // topics (optional)
-      users, // users - target the seller
-      [], // targets (optional)
-      message.data, // data payload
-      "open", // action
-      "", // image (optional)
-      "", // icon (optional)
-      "default", // sound
-      "#F7941E", // color
-      "", // tag (optional)
-      "1" // badge
-    );
+    const pushMessage = await messaging.createPush({
+      messageId: messageId,        // Unique message ID
+      title: message.title,        // Notification title
+      body: message.body,          // Notification body
+      users: users,                // Target users (array of user IDs)
+      data: message.data,          // Optional custom payload
+      
+    });
+    
     
     console.log("Push notification sent successfully:", pushMessage);
     return pushMessage;
