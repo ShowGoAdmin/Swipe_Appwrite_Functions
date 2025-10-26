@@ -226,6 +226,7 @@ export default async ({ req, res, log, error }) => {
       isListedForSale: 'false',
       qrCodeFileId: `${newTicketId}_ticket_qr.png`
     };
+    
 
     await databases.createDocument(
       DATABASE_ID,
