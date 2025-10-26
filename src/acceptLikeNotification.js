@@ -68,7 +68,7 @@ export default async ({ req, res, log, error }) => {
       groupId,
       {
         isAccepted: true,
-        groupName: `Match: ${group.eventname}`,
+        groupName: `Direct Chat`,
         groupDescription: `You matched at ${group.eventname}!`,
         likerUserId: null
       }

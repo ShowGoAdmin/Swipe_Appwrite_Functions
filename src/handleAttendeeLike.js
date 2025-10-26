@@ -116,7 +116,7 @@ export default async ({ req, res, log, error }) => {
         'groups',
         'unique()',
         {
-          groupName: `Like from ${liker.name}`,
+          groupName: `Direct Chat`,
           groupDescription: `${liker.name} wants to connect with you for ${event.name}`,
           eventId: eventId,
           eventname: event.name,

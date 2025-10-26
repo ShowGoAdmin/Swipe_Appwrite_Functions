@@ -48,7 +48,7 @@ export default async ({ req, res, log, error }) => {
       'groups',
       'unique()',
       {
-        groupName: `Match: ${event.name}`,
+        groupName: `Direct Chat`,
         groupDescription: `Direct chat between matched attendees`,
         eventId,
         eventname: event.name,
