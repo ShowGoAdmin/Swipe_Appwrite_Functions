@@ -226,7 +226,7 @@ export default async ({ req, res, log, error }) => {
       isListedForSale: 'false',
       qrCodeFileId: `${newTicketId}_ticket_qr.png`
     };
-    
+
 
     await databases.createDocument(
       DATABASE_ID,
@@ -289,7 +289,6 @@ export default async ({ req, res, log, error }) => {
       DATABASE_ID,
       'Listings',
       [Query.equal('ticketId', originalTicketId)],
-      undefined,
       appwriteTransactionId
     );
 
@@ -323,10 +322,7 @@ export default async ({ req, res, log, error }) => {
         ticketId: newTicketId,
         paymentId: paymentId,
         totalAmount: totalAmount,
-        gateway: 'RazorPay',
-        transactionType: 'resale_purchase',
-        originalTicketId: originalTicketId,
-        sellerUserId: sellerUserId
+        gateway: 'RazorPay'
       },
       [],
       appwriteTransactionId
