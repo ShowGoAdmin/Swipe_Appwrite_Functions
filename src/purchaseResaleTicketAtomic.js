@@ -426,12 +426,12 @@ export default async ({ req, res, log, error }) => {
           type: newOriginalQuantity === 0 ? "complete_ticket_sale" : "individual_ticket_sold",
           ticketId: originalTicketId,
           eventName: eventName,
-          amount: totalAmount,
+          amount: totalAmount.toString(),
           quantitySold: quantityInt.toString(),
           buyerId: buyerId,
           remainingQuantity: newOriginalQuantity.toString(),
-          isCompletelySold: newOriginalQuantity === 0,
-          totalEarnings: totalAmount // For complete sale tracking
+          isCompletelySold: (newOriginalQuantity === 0).toString(),
+          totalEarnings: totalAmount.toString()
         }
       };
       
