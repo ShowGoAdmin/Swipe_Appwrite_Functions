@@ -8,7 +8,7 @@ async function sendPushNotification(sellerUserId, message, databases) {
     const client = new Client()
       .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
       .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
-      .setKey(process.env.APPWRITE_API_KEY);
+      .setKey(process.env.APPWRITE_FUNCTION_API_KEY);
 
     const messaging = new Messaging(client);
     
