@@ -92,7 +92,7 @@ export default async ({ req, res, log, error }) => {
           sellingPrice: sellingPrice,
           expiry: listingExpiry,
           messageToBuyers: customNote,
-          status: 'Available',
+          status: 'available',
           eventDate: eventDate,
           eventVenue: eventVenue,
           eventTime: eventTime,
