@@ -171,7 +171,7 @@ export default async ({ req, res, log, error }) => {
       }, 400);
     }
 
-    if (instantSaleDoc.status !== 'Available') {
+    if (instantSaleDoc.status !== 'available') {
       error('Ticket is not available');
       await databases.updateTransaction(appwriteTransactionId, false);
       
@@ -237,7 +237,7 @@ export default async ({ req, res, log, error }) => {
     log('Updating instant sale listing');
     
     const newInstantSaleQuantity = currentQuantity - quantityInt;
-    const newInstantSaleStatus = newInstantSaleQuantity === 0 ? 'sold' : 'Available';
+    const newInstantSaleStatus = newInstantSaleQuantity === 0 ? 'sold' : 'available';
 
     await databases.updateDocument(
       DATABASE_ID,
