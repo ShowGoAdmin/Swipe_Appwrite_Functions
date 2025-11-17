@@ -14,7 +14,7 @@ export default async ({ req, res, log, error }) => {
     const { user1Id, user2Id, eventId } = JSON.parse(req.body);
 
     if (!user1Id || !user2Id || !eventId) {
-      return res.status(400).json({ 
+      return res.json({ 
         success: false, 
         message: 'Missing required parameters: user1Id, user2Id, eventId' 
       });
@@ -101,7 +101,7 @@ export default async ({ req, res, log, error }) => {
 
   } catch (err) {
     error(`Error creating attendee match: ${err.message}`);
-    return res.status(500).json({
+    return res.json({
       success: false,
       message: 'Internal server error'
     });

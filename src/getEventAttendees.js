@@ -1,3 +1,4 @@
+//in use
 import { Client, Databases, Query } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
@@ -39,7 +40,7 @@ export default async ({ req, res, log, error }) => {
         Query.equal('eventId', eventId)
       ]
     );
-
+  
     // Get unique user IDs from tickets
     const userIds = [...new Set(tickets.documents.map(ticket => ticket.userId))];
     
