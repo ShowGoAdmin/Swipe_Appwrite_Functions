@@ -1,6 +1,6 @@
 //in use
 import { Client, Databases, Functions, Query } from 'node-appwrite';
-import { ID } from 'node-appwrite';
+import {  } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
   try {
@@ -14,12 +14,12 @@ export default async ({ req, res, log, error }) => {
     const functions = new Functions(client);
 
     // Parse request body
-    const { likerUserId, likedUserId, eventId } = JSON.parse(req.body);
+    const { likerUserId, likedUserId, likedUserName, eventId } = JSON.parse(req.body);
 
-    if (!likerUserId || !likedUserId || !eventId) {
+    if (!likerUserId || !likedUserId || !likedUserName ||!eventId) {
       return res.json({ 
         success: false, 
-        message: 'Missing required parameters: likerUserId, likedUserId, eventId' 
+        message: 'Missing required parameters: likerUserId, likedUserId, likedUserName, eventId'
       });
     }
 
@@ -118,7 +118,7 @@ export default async ({ req, res, log, error }) => {
           'groups',
           docId,  // Fixed: Pass the generated ID
           {
-            groupName: `${liker.name || 'Unknown'}`.trim(),  // Fixed: Template literal + fallback
+            groupName: `${likedUserName || 'Unknown'}`.trim(),  // Fixed: Template literal + fallback
             groupImageId: `${docId}_group_pic.png`,  // Fixed: Valid template literal
             eventId,
             eventname: event.name,
