@@ -126,7 +126,6 @@ export default async ({ req, res, log, error }) => {
             adminUserId: likerUserId,
             eventDate: event.date || '',
             eventLocation: event.location || '',
-            profilePicUrl: liker.profilePicUrl || '',  // Renamed to avoid duplicate
             eventLocation_Lat_Lng_VenueName: event.eventLocation_Lat_Lng_VenueName || '',
             isDirectChat: true,
             matchId: likeRecord.$id,
