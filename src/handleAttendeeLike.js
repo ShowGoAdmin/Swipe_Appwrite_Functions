@@ -111,29 +111,29 @@ export default async ({ req, res, log, error }) => {
         databases.getDocument(process.env.DATABASE_ID, 'events', eventId),
         databases.getDocument(process.env.DATABASE_ID, 'users', likerUserId)
       ]);
-        const docId = ID.unique();
-      // Create a direct chat group with pending like
-      const notificationGroup = await databases.createDocument(
-        process.env.DATABASE_ID,
-        'groups',
-        docId,
-        {
-          groupName: `liker.name`,
-          groupImageId: `${docId}_group_pic.png``,
-          eventId: eventId,
-          eventname: event.name,
-          members: [likerUserId, likedUserId], // Both users are members (as array)
-          adminUserId: likerUserId,
-          eventDate: event.date || '',
-          eventLocation: event.location || '',
-          groupImageId: liker.profilePicUrl || '',
-          eventLocation_Lat_Lng_VenueName: event.eventLocation_Lat_Lng_VenueName || '',
-          isDirectChat: true,  // Mark as direct chat
-          matchId: likeRecord.$id,  // Store the like record ID as matchId
-          likerUserId: likerUserId,  // Who sent the like
-          isAccepted: false  // Pending acceptance
-        }
-      );
+        const docId = ID.unique();  // Fixed: Use ID.unique()
+
+        const notificationGroup = await databases.createDocument(
+          process.env.DATABASE_ID,
+          'groups',
+          docId,  // Fixed: Pass the generated ID
+          {
+            groupName: `${liker.name || 'Unknown'}`.trim(),  // Fixed: Template literal + fallback
+            groupImageId: `${docId}_group_pic.png`,  // Fixed: Valid template literal
+            eventId,
+            eventname: event.name,
+            members: [likerUserId, likedUserId],
+            adminUserId: likerUserId,
+            eventDate: event.date || '',
+            eventLocation: event.location || '',
+            profilePicUrl: liker.profilePicUrl || '',  // Renamed to avoid duplicate
+            eventLocation_Lat_Lng_VenueName: event.eventLocation_Lat_Lng_VenueName || '',
+            isDirectChat: true,
+            matchId: likeRecord.$id,
+            likerUserId,
+            isAccepted: false
+          }
+        );
 
       log(`Like notification group created: ${notificationGroup.$id}`);
 
