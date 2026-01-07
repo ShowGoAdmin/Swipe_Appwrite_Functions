@@ -1,6 +1,6 @@
 //in use
 import { Client, Databases, Functions, Query } from 'node-appwrite';
-import { ID } from 'appwrite';
+import { ID } from 'node-appwrite';
 
 export default async ({ req, res, log, error }) => {
   try {
