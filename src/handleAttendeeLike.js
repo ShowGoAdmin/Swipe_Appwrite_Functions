@@ -1,5 +1,6 @@
 //in use
 import { Client, Databases, Functions, Query } from 'node-appwrite';
+import { ID } from 'appwrite';
 
 export default async ({ req, res, log, error }) => {
   try {
@@ -110,15 +111,15 @@ export default async ({ req, res, log, error }) => {
         databases.getDocument(process.env.DATABASE_ID, 'events', eventId),
         databases.getDocument(process.env.DATABASE_ID, 'users', likerUserId)
       ]);
-
+        const docId = ID.unique();
       // Create a direct chat group with pending like
       const notificationGroup = await databases.createDocument(
         process.env.DATABASE_ID,
         'groups',
-        'unique()',
+        docId,
         {
-          groupName: `Direct Chat`,
-          groupDescription: `${liker.name} wants to connect with you for ${event.name}`,
+          groupName: `liker.name`,
+          groupImageId: `${docId}_group_pic.png``,
           eventId: eventId,
           eventname: event.name,
           members: [likerUserId, likedUserId], // Both users are members (as array)
