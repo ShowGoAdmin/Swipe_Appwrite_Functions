@@ -15,7 +15,7 @@ export default async ({ req, res, log, error }) => {
     log("Verifying Cashfree order", { order_id });
 
     const response = await axios.get(
-      "https://sandbox.cashfree.com/pg/orders/${order_id}",
+        `https://sandbox.cashfree.com/pg/orders/${order_id}`,
       {
         headers: {
           "x-client-id": process.env.CASHFREE_CLIENT_ID,
