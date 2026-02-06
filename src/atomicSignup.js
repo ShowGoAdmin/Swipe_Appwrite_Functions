@@ -69,7 +69,9 @@ export default async ({ req, res, log, error }) => {
       profilePicBase64,           // Base64 encoded profile picture
       qrCodeBase64,               // Base64 encoded QR code
       phone,
-      countryCode = '+91'
+      countryCode = '+91',
+      age,
+      starSign
     } = JSON.parse(req.body || '{}');
 
     log('Starting FULLY atomic user signup (storage + database)', { 
@@ -77,13 +79,17 @@ export default async ({ req, res, log, error }) => {
       email, 
       name,
       hasProfilePic: !!profilePicBase64,
-      hasQRCode: !!qrCodeBase64
+      hasQRCode: !!qrCodeBase64,
+        phone,
+        countryCode,
+        age,
+        starSign
     });
 
     // ============================================
     // STEP 2: Validate required inputs
     // ============================================
-    if (!providedUserId || !email || !name || !profilePicBase64 || !qrCodeBase64 || !phone) {
+    if (!providedUserId || !email || !name || !profilePicBase64 || !qrCodeBase64 || !phone || !countryCode || !age || !starSign) {
       error('Missing required fields');
       return res.json({
         success: false,
@@ -292,7 +298,9 @@ export default async ({ req, res, log, error }) => {
         profilePicUrl: profilePicUrl,
         phoneNumber: phone,
         countryCode: countryCode,
-        role: 'user' // Default role
+        role: 'user', // Default role
+        age: age,
+        starSign: starSign
       },
       [],  // permissions (will use collection-level permissions)
       appwriteTransactionId // CRITICAL: Pass transaction ID for staging
@@ -303,7 +311,11 @@ export default async ({ req, res, log, error }) => {
       email,
       name,
       profilePicUrl,
-      qrImageId: uploadedQRCodeId
+      qrImageId: uploadedQRCodeId,
+        phoneNumber: phone,
+        countryCode: countryCode,
+        age: age,
+        starSign: starSign
     });
 
     // ============================================
@@ -333,6 +345,9 @@ export default async ({ req, res, log, error }) => {
         profilePicId: uploadedProfilePicId,
         qrImageId: uploadedQRCodeId,
         phoneNumber: phone,
+        countryCode: countryCode,
+        age: age,
+        starSign: starSign
         message: 'User signup completed successfully - fully atomic (storage + database)'
       }
     }, 200);
