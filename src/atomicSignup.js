@@ -347,7 +347,7 @@ export default async ({ req, res, log, error }) => {
         phoneNumber: phone,
         countryCode: countryCode,
         age: age,
-        starSign: starSign
+        starSign: starSign,
         message: 'User signup completed successfully - fully atomic (storage + database)'
       }
     }, 200);
