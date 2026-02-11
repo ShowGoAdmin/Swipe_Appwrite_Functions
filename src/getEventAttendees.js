@@ -15,9 +15,9 @@ export default async ({ req, res, log, error }) => {
     const { eventId, currentUserId } = JSON.parse(req.body);
 
     if (!eventId || !currentUserId) {
-      return res.json({ 
-        success: false, 
-        message: 'Missing required parameters: eventId, currentUserId' 
+      return res.json({
+        success: false,
+        message: 'Missing required parameters: eventId, currentUserId'
       });
     }
 
@@ -40,10 +40,10 @@ export default async ({ req, res, log, error }) => {
         Query.equal('eventId', eventId)
       ]
     );
-  
+
     // Get unique user IDs from tickets
     const userIds = [...new Set(tickets.documents.map(ticket => ticket.userId))];
-    
+
     // Remove current user from the list
     const otherUserIds = userIds.filter(id => id !== currentUserId);
 
@@ -92,6 +92,7 @@ export default async ({ req, res, log, error }) => {
             musicInterests: user.musicInterests || [],
             bio: user.bio || '',
             age: user.age || null,
+            starSign: user.starSign || '',
             isActive: true,
             createdAt: user.$createdAt
           });
