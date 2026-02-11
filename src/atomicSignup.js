@@ -299,7 +299,7 @@ export default async ({ req, res, log, error }) => {
         phoneNumber: phone,
         countryCode: countryCode,
         role: 'user', // Default role
-        age: age,
+        age: age.toInteger(),
         starSign: starSign
       },
       [],  // permissions (will use collection-level permissions)
