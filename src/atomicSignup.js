@@ -52,7 +52,7 @@ export default async ({ req, res, log, error }) => {
   const DATABASE_ID = process.env.DATABASE_ID;
   const PROFILE_PIC_BUCKET_ID = process.env.USER_PROFILE_PIC_BUCKET_ID;
   const QR_CODE_BUCKET_ID = process.env.USER_QR_CODE_BUCKET_ID;
-  
+
   let appwriteTransactionId = null;
   let userId = null;
   let uploadedProfilePicId = null;
@@ -74,16 +74,16 @@ export default async ({ req, res, log, error }) => {
       starSign
     } = JSON.parse(req.body || '{}');
 
-    log('Starting FULLY atomic user signup (storage + database)', { 
-      userId: providedUserId, 
-      email, 
+    log('Starting FULLY atomic user signup (storage + database)', {
+      userId: providedUserId,
+      email,
       name,
       hasProfilePic: !!profilePicBase64,
       hasQRCode: !!qrCodeBase64,
-        phone,
-        countryCode,
-        age,
-        starSign
+      phone,
+      countryCode,
+      age,
+      starSign
     });
 
     // ============================================
@@ -125,28 +125,28 @@ export default async ({ req, res, log, error }) => {
     // STEP 3: Upload Profile Picture to Storage
     // ============================================
     log('Uploading profile picture to storage');
-    
+
     try {
       // Convert base64 to buffer
       const profilePicBuffer = Buffer.from(profilePicBase64, 'base64');
       const profilePicFileId = `${userId}_user_pic.png`;
-      
+
       // Create InputFile from buffer
       const profilePicInputFile = InputFile.fromBuffer(
         profilePicBuffer,
         profilePicFileId
       );
-      
+
       // Upload file to storage
       const profilePicFile = await storage.createFile(
         PROFILE_PIC_BUCKET_ID,
         profilePicFileId,
         profilePicInputFile
       );
-      
+
       uploadedProfilePicId = profilePicFile.$id;
       log('Profile picture uploaded successfully', { fileId: uploadedProfilePicId });
-      
+
     } catch (err) {
       error('Failed to upload profile picture', err);
       return res.json({
@@ -160,34 +160,34 @@ export default async ({ req, res, log, error }) => {
     // STEP 4: Upload QR Code to Storage
     // ============================================
     log('Uploading QR code to storage');
-    
+
     try {
       // Convert base64 to buffer
       const qrCodeBuffer = Buffer.from(qrCodeBase64, 'base64');
       const qrCodeFileId = `${userId}_user_qr.png`;
-      
+
       // Create InputFile from buffer
       const qrCodeInputFile = InputFile.fromBuffer(
         qrCodeBuffer,
         qrCodeFileId
       );
-      
+
       // Upload file to storage
       const qrCodeFile = await storage.createFile(
         QR_CODE_BUCKET_ID,
         qrCodeFileId,
         qrCodeInputFile
       );
-      
+
       uploadedQRCodeId = qrCodeFile.$id;
       log('QR code uploaded successfully', { fileId: uploadedQRCodeId });
-      
+
     } catch (err) {
       error('Failed to upload QR code', err);
-      
+
       // CLEANUP: Delete already uploaded profile picture
       await cleanupUploadedFiles(uploadedProfilePicId, null);
-      
+
       return res.json({
         success: false,
         error: 'Failed to upload QR code: ' + err.message,
@@ -200,19 +200,19 @@ export default async ({ req, res, log, error }) => {
     // STEP 5: Create Appwrite Transaction
     // ============================================
     log('Creating Appwrite transaction for user signup');
-    
+
     // Create transaction with 3-minute TTL (180 seconds)
     // TTL must be between 60 and 3,600 seconds
     const transaction = await databases.createTransaction(180);
     appwriteTransactionId = transaction.$id;
-    
+
     log('Transaction created successfully', { transactionId: appwriteTransactionId });
 
     // ============================================
     // STEP 6: Check for duplicate user WITHIN transaction
     // ============================================
     log('Checking for duplicate user within transaction context');
-    
+
     // Check if user document already exists
     try {
       const existingUser = await databases.getDocument(
@@ -222,16 +222,16 @@ export default async ({ req, res, log, error }) => {
         [],  // queries
         appwriteTransactionId  // CRITICAL: Check within transaction
       );
-      
+
       // User already exists - this is a duplicate
       error('User document already exists');
-      
+
       // Rollback transaction
       await databases.updateTransaction(appwriteTransactionId, false);
-      
+
       // CLEANUP: Delete uploaded files
       await cleanupUploadedFiles(uploadedProfilePicId, uploadedQRCodeId);
-      
+
       return res.json({
         success: false,
         error: 'User account already exists in database',
@@ -260,13 +260,13 @@ export default async ({ req, res, log, error }) => {
 
     if (existingEmailCheck.documents.length > 0) {
       error('Email already registered');
-      
+
       // Rollback transaction
       await databases.updateTransaction(appwriteTransactionId, false);
-      
+
       // CLEANUP: Delete uploaded files
       await cleanupUploadedFiles(uploadedProfilePicId, uploadedQRCodeId);
-      
+
       return res.json({
         success: false,
         error: 'This email is already registered',
@@ -275,17 +275,17 @@ export default async ({ req, res, log, error }) => {
         cleanedUp: ['profilePicture', 'qrCode', 'transaction']
       }, 400);
     }
-    
+
     log('No duplicate user found, proceeding with creation');
 
     // ============================================
     // STEP 7: Stage user document creation
     // ============================================
     log('Staging user document creation');
-    
+
     // Build profile picture URL
     const profilePicUrl = `https://cloud.appwrite.io/v1/storage/buckets/${PROFILE_PIC_BUCKET_ID}/files/${uploadedProfilePicId}/view?project=${process.env.APPWRITE_FUNCTION_PROJECT_ID}`;
-    
+
     const userDoc = await databases.createDocument(
       DATABASE_ID,
       'users',
@@ -299,42 +299,42 @@ export default async ({ req, res, log, error }) => {
         phoneNumber: phone,
         countryCode: countryCode,
         role: 'user', // Default role
-        age: age.toInteger(),
+        age: parseInt(age, 10),
         starSign: starSign
       },
       [],  // permissions (will use collection-level permissions)
       appwriteTransactionId // CRITICAL: Pass transaction ID for staging
     );
 
-    log('User document creation staged', { 
+    log('User document creation staged', {
       userId,
       email,
       name,
       profilePicUrl,
       qrImageId: uploadedQRCodeId,
-        phoneNumber: phone,
-        countryCode: countryCode,
-        age: age,
-        starSign: starSign
+      phoneNumber: phone,
+      countryCode: countryCode,
+      age: age,
+      starSign: starSign
     });
 
     // ============================================
     // STEP 8: Commit the transaction
     // ============================================
     log('Committing transaction', { transactionId: appwriteTransactionId });
-    
+
     await databases.updateTransaction(
       appwriteTransactionId,
       true // true = commit, false = rollback
     );
-    
+
     log('Transaction committed successfully - user created');
 
     // ============================================
     // SUCCESS - Return user details
     // ============================================
     log('User signup completed successfully');
-    
+
     return res.json({
       success: true,
       data: {
@@ -357,23 +357,23 @@ export default async ({ req, res, log, error }) => {
     // ERROR HANDLING & COMPLETE ROLLBACK
     // ============================================
     error('User signup failed - initiating complete rollback', err);
-    
+
     const cleanupResults = {
       transaction: false,
       profilePicture: false,
       qrCode: false
     };
-    
+
     // STEP 1: Rollback database transaction if it was created
     if (appwriteTransactionId) {
       try {
         log('Rolling back database transaction', { transactionId: appwriteTransactionId });
-        
+
         await databases.updateTransaction(
           appwriteTransactionId,
           false // false = rollback
         );
-        
+
         cleanupResults.transaction = true;
         log('Database transaction rolled back successfully');
       } catch (rollbackErr) {
@@ -384,7 +384,7 @@ export default async ({ req, res, log, error }) => {
         });
       }
     }
-    
+
     // STEP 2: Delete uploaded files
     const filesCleanedUp = await cleanupUploadedFiles(uploadedProfilePicId, uploadedQRCodeId);
     cleanupResults.profilePicture = filesCleanedUp.profilePic;
@@ -393,7 +393,7 @@ export default async ({ req, res, log, error }) => {
     // Determine error code and message
     let errorCode = 'SIGNUP_ERROR';
     let errorMessage = err.message || 'User signup failed';
-    
+
     // Check for specific Appwrite error types
     if (err.code === 409 || err.message?.includes('conflict')) {
       errorCode = 'CONFLICT_ERROR';
